@@ -15,3 +15,35 @@ WHERE is_test = 0
     AND experience = 'SHIFT'
     AND (sf_obj_id IS NULL OR sf_obj_id = '')
 ORDER BY id DESC;
+
+-- Checking for active devices
+SELECT
+    o.id AS organization_id,
+    o.name AS organization_name,
+    COUNT(a.id::integer) AS device_count
+FROM upshow.organizations o
+LEFT JOIN upshow.apikey a ON o.id = a.org_id
+GROUP BY o.id, o.name
+ORDER BY device_count DESC;
+
+SELECT 
+    COUNT(DISTINCT o.id) AS shift_orgs_with_active_devices,
+    MAX(a.lastseen) AS most_recently_seen
+FROM upshow.organizations o
+LEFT JOIN upshow.apikey a ON o.id = a.org_id
+WHERE o.is_active = 1
+    AND o.experience = 'SHIFT'
+    AND a.active = 1;
+
+SELECT
+    o.id AS organization_id,
+    o.name AS organization_name,
+    COUNT(a.id) AS active_device_count,
+    MAX(a.lastseen) AS most_recently_seen
+FROM upshow.organizations o
+JOIN upshow.apikey a ON o.id = a.org_id
+WHERE o.is_active = 1
+    AND o.experience = 'SHIFT'
+    AND a.active = 1
+GROUP BY o.id, o.name
+ORDER BY most_recently_seen DESC;
