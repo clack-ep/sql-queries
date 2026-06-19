@@ -1,0 +1,163 @@
+-- Record Counts
+SELECT
+    a.account__id,
+    COUNT(DISTINCT b.id)    AS billing_count,
+    COUNT(DISTINCT c.id)    AS contact_count,
+    COUNT(DISTINCT o.id)    AS order_count,
+    COUNT(DISTINCT ca.id)   AS case_count,
+    COUNT(DISTINCT l.id)    AS location_count,
+    COUNT(DISTINCT s.id)    AS sku_count,
+    COUNT(DISTINCT aa.id)   AS asset_action_count
+FROM (
+    SELECT id AS account__id
+    FROM bronze_salesforce.account
+    WHERE type = 'Customer' AND xumo__c = true AND customer_segment_formula__c = 'SMB' AND status__c = 'Active'
+) a
+LEFT JOIN bronze_salesforce.billing_id b    ON a.account__id = b.customer_account_id__c
+LEFT JOIN bronze_salesforce.contact c       ON a.account__id = c.accountid
+LEFT JOIN bronze_salesforce."order" o       ON a.account__id = o.accountid
+LEFT JOIN bronze_salesforce."case" ca       ON a.account__id = ca.accountid
+LEFT JOIN bronze_salesforce.account l       ON a.account__id = l.customer__c
+LEFT JOIN bronze_salesforce.skus s          ON a.account__id = s.accountid
+LEFT JOIN bronze_salesforce.asset_action aa ON a.account__id = aa.account__c
+GROUP BY a.account__id
+ORDER BY a.account__id;
+
+-- Account + Billing + Contact
+SELECT DISTINCT
+    a.*,
+    b.*,
+    c.*
+FROM ( -- Account Base
+    SELECT
+        a.id                            AS account__id,
+        a.type                          AS account__type,
+        a.createddate                   AS account__created_date,
+        a.lastmodifieddate              AS account__last_modified_date,
+        a.customer_segment_formula__c   AS account__segment,
+        a.name                          AS account__name,
+        a.ownerid                       AS account__owner_id,
+        a.comcast__c                    AS account__is_comcast,
+        a.xumo__c                       AS account__is_charter,
+        a.site                          AS account__website,
+        a.account_piracy_flag__c        AS account__piracy_flag,
+        a.do_not_sell__c                AS account__do_not_sell,
+        a.industry_vertical_formula__c  AS account__industry_vertical,
+        a.industry_sub_vertical__c      AS account__industry_sub_vertical,
+        a.mql_converted__c              AS account__mql_converted,
+        a.mql_date__c                   AS account__mql_date,
+        a.billing_contact__c            AS account__billing_contact_id,
+        a.primary_contact__c            AS account__primary_contact_id,
+        a.billingstreet                 AS account__billing_address_street,
+        a.billingcity                   AS account__billing_address_city,
+        a.billingstate                  AS account__billing_address_state,
+        a.billingpostalcode             AS account__billing_address_postal_code,
+        a.billingcountry                AS account__billing_address_country,
+        a.shippingstreet                AS account__shipping_address_street,
+        a.shippingcity                  AS account__shipping_address_city,
+        a.shippingstate                 AS account__shipping_address_state,
+        a.shippingpostalcode            AS account__shipping_address_postal_code,
+        a.shippingcountry               AS account__shipping_address_country
+    FROM bronze_salesforce.account a
+    WHERE a.type = 'Customer'
+        AND a.xumo__c = true
+        AND a.customer_segment_formula__c = 'SMB'
+        AND a.status__c = 'Active'
+) a
+LEFT JOIN ( -- Billing Join
+    SELECT
+        b.id                        AS billing__id,
+        b.customer_account_id__c    AS billing__account_id,
+        b.createddate               AS billing__created_date,
+        b.lastmodifieddate          AS billing__last_modified_date,
+        b.customer_id__c            AS billing__customer_id,
+        b.status__c                 AS billing__status
+    FROM bronze_salesforce.billing_id b
+) b ON a.account__id = b.billing__account_id
+LEFT JOIN ( -- Contact Join
+    SELECT
+        c.id                        AS contact__id,
+        c.accountid                 AS contact__account_id,
+        c.createddate               AS contact__created_date,
+        c.lastmodifieddate          AS contact__last_modified_date,
+        c.email                     AS contact__email,
+        c.phone                     AS contact__phone,
+        c.title                     AS contact__title
+    FROM bronze_salesforce.contact c
+) c ON a.account__id = c.contact__account_id
+ORDER BY a.account__id;
+
+-- Case
+SELECT
+    a.account__id                           AS account__id,
+    ca.id                                   AS case__id,
+    ca.createddate                          AS case__created_date,
+    ca.lastmodifieddate                     AS case__last_modified_date,
+    ca.subject                              AS case__subject,
+    ca.description                          AS case__description,
+    ca.closeddate                           AS case__closeddate,
+    ca.status                               AS case__status,
+    ca.cancel_billing__c                    AS case__cancel_billing
+FROM (
+    SELECT id AS account__id
+    FROM bronze_salesforce.account
+    WHERE type = 'Customer' AND xumo__c = true AND customer_segment_formula__c = 'SMB' AND status__c = 'Active'
+) a
+LEFT JOIN bronze_salesforce."case" ca ON a.account__id = ca.accountid
+WHERE ca.id IS NOT NULL
+ORDER BY a.account__id;
+
+-- Location
+SELECT
+    a.account__id           AS account__id,
+    l.id                    AS location__id,
+    l.createddate           AS location__created_date,
+    l.lastmodifieddate      AS location__last_modified_date,
+    l.name                  AS location__name,
+    l.location_type__c      AS location__type,
+    l.fco__c                AS location__fco,
+    l.fco_confirmed__c      AS location__fco_confirmed,
+    l.be_org_id__c          AS location__backend_org_id,
+    l.physical_address__street__s       AS location__physical_address_street,
+    l.physical_address__city__s         AS location__physical_address_city,
+    l.physical_address__statecode__s    AS location__physical_address_state,
+    l.physical_address__postalcode__s   AS location__physical_address_postal_code,
+    l.physical_address__countrycode__s  AS location__physical_address_country,
+    l.shippingstreet                    AS location__shipping_address_street,
+    l.shippingcity                      AS location__shipping_address_city,
+    l.shippingstate                     AS location__shipping_address_state,
+    l.shippingpostalcode                AS location__shipping_address_postal_code,
+    l.shippingcountrycode               AS location__shipping_address_country_code,
+    l.xumo__c                           AS location__is_charter,
+    l.comcast__c                        AS location__is_comcast,
+    l.xumo_customer_id__c               AS location__xumo_id,
+    l.no_org_creation__c                AS location__no_org_creation,
+    l.location_eligibility__c           AS location__location_eligibility
+FROM (
+    SELECT id AS account__id
+    FROM bronze_salesforce.account
+    WHERE type = 'Customer' AND xumo__c = true AND customer_segment_formula__c = 'SMB' AND status__c = 'Active'
+) a
+LEFT JOIN bronze_salesforce.account l ON a.account__id = l.customer__c
+ORDER BY a.account__id;
+
+-- Asset Actions
+SELECT
+    a.account__id                           AS account__id,
+    aa.createddate                          AS asset_action__created_date,
+    aa.lastmodifieddate                     AS asset_action__last_modified_date,
+    aa.assetid                              AS asset_action__assetid,
+    aa.type                                 AS asset_action__type,
+    aa.categoryenum                         AS asset_action__category__enum,
+    aa.actiondate                           AS asset_action__action_date,
+    aa.quantitychange                       AS asset_action__quantity_change,
+    aa.mrrchange                            AS asset_action__mrr_change,
+    aa.mrr__c                               AS asset_action__mrr
+FROM (
+    SELECT id AS account__id
+    FROM bronze_salesforce.account
+    WHERE type = 'Customer' AND xumo__c = true AND customer_segment_formula__c = 'SMB' AND status__c = 'Active'
+) a
+LEFT JOIN bronze_salesforce.asset_action aa ON a.account__id = aa.account__c
+WHERE aa.account__c IS NOT NULL
+ORDER BY a.account__id;
