@@ -1,0 +1,17 @@
+-- With SF IDs
+SELECT id, name, vertical, created_at, sf_obj_id
+FROM upshow.organizations
+WHERE is_test = 0
+    AND is_active = 1
+    AND experience = 'SHIFT'
+    AND (sf_obj_id IS NOT NULL AND sf_obj_id != '')
+ORDER BY id DESC;
+
+-- Without SF IDs
+SELECT id, name, vertical, created_at, sf_obj_id
+FROM upshow.organizations
+WHERE is_test = 0
+    AND is_active = 1
+    AND experience = 'SHIFT'
+    AND (sf_obj_id IS NULL OR sf_obj_id = '')
+ORDER BY id DESC;
