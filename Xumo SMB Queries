@@ -1,4 +1,4 @@
--- Record Counts
+--RECORD COUNTS
 SELECT
     a.account__id,
     COUNT(DISTINCT b.id)    AS billing_count,
@@ -23,7 +23,7 @@ LEFT JOIN bronze_salesforce.asset_action aa ON a.account__id = aa.account__c
 GROUP BY a.account__id
 ORDER BY a.account__id;
 
--- Account + Billing + Contact
+--ACCOUNT+BILLING+CONTACT
 SELECT DISTINCT
     a.*,
     b.*,
@@ -87,7 +87,27 @@ LEFT JOIN ( -- Contact Join
 ) c ON a.account__id = c.contact__account_id
 ORDER BY a.account__id;
 
--- Case
+--ORDER
+SELECT
+    a.account__id           AS account__id,
+    o.id                        AS order__id,
+    o.accountid                 AS order__account_id,
+    o.createddate               AS order__created_date,
+    o.lastmodifieddate          AS order__last_modified_date,
+    o.device_type__c            AS order__device_type,
+    o.of_devices__c             AS order__number_of_devices,
+    o.serial_lot_numbers__c     AS order__serial_lot_numbers,
+    o.ship_date__c              AS order__ship_date
+FROM (
+    SELECT id AS account__id
+    FROM bronze_salesforce.account
+    WHERE type = 'Customer' AND xumo__c = true AND customer_segment_formula__c = 'SMB' AND status__c = 'Active'
+) a
+LEFT JOIN bronze_salesforce."order" o ON a.account__id = o.accountid
+WHERE o.id IS NOT NULL
+ORDER BY a.account__id;
+
+--CASE
 SELECT
     a.account__id                           AS account__id,
     ca.id                                   AS case__id,
@@ -107,7 +127,7 @@ LEFT JOIN bronze_salesforce."case" ca ON a.account__id = ca.accountid
 WHERE ca.id IS NOT NULL
 ORDER BY a.account__id;
 
--- Location
+--LOCATION
 SELECT
     a.account__id           AS account__id,
     l.id                    AS location__id,
@@ -141,7 +161,7 @@ FROM (
 LEFT JOIN bronze_salesforce.account l ON a.account__id = l.customer__c
 ORDER BY a.account__id;
 
--- Asset Actions
+--ASSET ACTIONS
 SELECT
     a.account__id                           AS account__id,
     aa.createddate                          AS asset_action__created_date,
@@ -160,4 +180,33 @@ FROM (
 ) a
 LEFT JOIN bronze_salesforce.asset_action aa ON a.account__id = aa.account__c
 WHERE aa.account__c IS NOT NULL
+ORDER BY a.account__id;
+
+--SKU
+SELECT
+    a.account__id           AS account__id,
+    s.id                    AS sku__id,
+    s.createddate           AS sku__created_date,
+    s.lastmodifieddate      AS sku__last_modified_date,
+    s.xumo__c               AS sku__is_charter,
+    s.productfamily         AS sku__product_family,
+    s.productdescription    AS sku__product_description,
+    s.quantity              AS sku__quantity,
+    s.start_date__c         AS sku__start_date,
+    s.lifecycleenddate      AS sku__lifecycle_end_date,
+    s.price                 AS sku__price,
+    s.currentmrr            AS sku__current_mrr,
+    s.nflst_subscription_value__c       AS sku__nflst_subscription_value,
+    s.cancel_date__c                    AS sku__cancel_date,
+    s.cancellation_approval_status__c   AS sku__cancellation_approval_status,
+    s.cancellation_reason__c            AS sku__cancellation_reason,
+    s.renewaltermunit       AS sku_renewal_term_unit,
+    s.renewalterm           AS sku_renewal_term
+FROM (
+    SELECT id AS account__id
+    FROM bronze_salesforce.account
+    WHERE type = 'Customer' AND xumo__c = true AND customer_segment_formula__c = 'SMB' AND status__c = 'Active'
+) a
+LEFT JOIN bronze_salesforce.skus s ON a.account__id = s.accountid
+WHERE s.id IS NOT NULL
 ORDER BY a.account__id;
