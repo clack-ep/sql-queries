@@ -1,0 +1,88 @@
+---- TOTAL COUNTS
+-- Experience
+SELECT experience, COUNT(*)
+FROM upshow.organizations
+WHERE is_active = 1 AND is_test = 0
+GROUP BY experience
+ORDER BY COUNT(*) DESC;
+-- Vertical
+SELECT vertical, COUNT(*)
+FROM upshow.organizations
+WHERE is_active = 1 AND is_test = 0
+GROUP BY vertical
+ORDER BY COUNT(*) DESC;
+-- Org Type
+SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN root = 1 AND leaf = 0 THEN 1 ELSE 0 END) AS root_count,
+    SUM(CASE WHEN root = 0 AND leaf = 1 THEN 1 ELSE 0 END) AS leaf_count,
+    SUM(CASE WHEN root = 1 AND leaf = 1 THEN 1 ELSE 0 END) AS root_leaf_count,
+    SUM(CASE WHEN root = 0 AND leaf = 0 THEN 1 ELSE 0 END) AS other_count
+FROM upshow.organizations
+WHERE is_test = 0 AND is_active = 1;
+-- Test
+SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count,
+    SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count
+FROM upshow.organizations
+WHERE is_test = 1;
+-- Non-Test
+SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count,
+    SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_count
+FROM upshow.organizations
+WHERE is_test = 0;
+
+----SUB-POPULATION COUNTS
+-- Exclude SHIFT Counts
+SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN root = 1 AND leaf = 0 THEN 1 ELSE 0 END) AS root_count,
+    SUM(CASE WHEN root = 0 AND leaf = 1 THEN 1 ELSE 0 END) AS leaf_count,
+    SUM(CASE WHEN root = 1 AND leaf = 1 THEN 1 ELSE 0 END) AS root_leaf_count,
+    SUM(CASE WHEN root = 0 AND leaf = 0 THEN 1 ELSE 0 END) AS other_count
+FROM upshow.organizations
+WHERE is_test = 0
+    AND is_active = 1
+    AND experience != 'SHIFT';
+
+-- NULL SF ID Counts
+SELECT
+    COUNT(*) AS total_missing_sf_id,
+    SUM(CASE WHEN root = 1 AND leaf = 0 THEN 1 ELSE 0 END) AS root_missing_sf_id,
+    SUM(CASE WHEN root = 0 AND leaf = 1 THEN 1 ELSE 0 END) AS leaf_missing_sf_id,
+    SUM(CASE WHEN root = 1 AND leaf = 1 THEN 1 ELSE 0 END) AS root_leaf_missing_sf_id,
+    SUM(CASE WHEN root = 0 AND leaf = 0 THEN 1 ELSE 0 END) AS other_missing_sf_id
+FROM upshow.organizations
+WHERE is_test = 0
+    AND is_active = 1
+    AND experience != 'SHIFT'
+    AND (sf_obj_id IS NULL OR sf_obj_id = '');
+
+-- NULL SF ID List
+SELECT
+    o.id,
+    o.name,
+    o.sf_obj_id,
+    o.is_test,
+    o.root
+FROM upshow.organizations o
+WHERE o.root = true
+  AND o.is_test = false
+  AND o.is_active = true
+  AND o.experience != 'SHIFT'
+  AND (o.sf_obj_id IS NULL OR o.sf_obj_id = '')
+  AND EXISTS (
+      SELECT 1
+      FROM upshow.organization_tree ot
+      JOIN upshow.organizations leaf_org
+        ON leaf_org.id = ot.child
+      WHERE ot.parent = o.id
+		AND ot.depth > 0
+        AND leaf_org.leaf = true
+        AND leaf_org.is_active = true
+        AND leaf_org.is_test = false
+        AND leaf_org.sf_obj_id IS NOT NULL
+        AND leaf_org.sf_obj_id != '');
