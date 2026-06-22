@@ -88,7 +88,7 @@ LEFT JOIN ( -- Contact Join
 ORDER BY a.account__id;
 
 --ORDER
-SELECT
+SELECT DISTINCT
     a.account__id           AS account__id,
     o.id                        AS order__id,
     o.accountid                 AS order__account_id,
